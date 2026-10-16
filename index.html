@@ -270,9 +270,9 @@ ol.guide b{color:var(--accent)}
       </div>
       <p class="muted" style="text-align:center;margin:8px 0 0">10連は SR以上 1体確定</p>
     </div>
-    <div class="card"><h2>さいきんの結果</h2><div class="hist" id="recent"></div></div>
+    <div class="card"><h2>最近の結果</h2><div class="hist" id="recent"></div></div>
     <div class="card"><h2>排出率</h2><table class="rates" id="rates"></table>
-      <p class="muted" style="margin:10px 0 0">ダブったキャラは Lvアップ（最大Lv10）＋💎かけら（N1・R3・SR10・SSR30・UR100）</p></div>
+      <p class="muted" style="margin:10px 0 0">被ったキャラは Lvアップ（最大Lv10）＋💎かけら（N1・R3・SR10・SSR30・UR100）</p></div>
   </div>
 </section>
 
@@ -291,11 +291,11 @@ ol.guide b{color:var(--accent)}
   </div>
 </section>
 
-<!-- きろく・実績 -->
+<!-- 記録・実績 -->
 <section id="log">
-  <div class="topbar"><button class="back" data-go="home">‹</button><h1>きろく・実績</h1></div>
+  <div class="topbar"><button class="back" data-go="home">‹</button><h1>記録・実績</h1></div>
   <div class="body">
-    <div class="card"><h2>さいきん14日</h2><div class="chart" id="chart"></div></div>
+    <div class="card"><h2>最近14日</h2><div class="chart" id="chart"></div></div>
     <div class="card">
       <div class="stats">
         <div class="stat"><b id="sTotal">0</b><span>合計歩数</span></div>
@@ -309,9 +309,9 @@ ol.guide b{color:var(--accent)}
   </div>
 </section>
 
-<!-- 使い方・せってい -->
+<!-- 使い方・設定 -->
 <section id="settings">
-  <div class="topbar"><button class="back" data-go="home">‹</button><h1>使い方・せってい</h1></div>
+  <div class="topbar"><button class="back" data-go="home">‹</button><h1>使い方・設定</h1></div>
   <div class="body">
     <div class="card">
       <h2>歩数の取り込みかた（はじめに1回だけ設定）</h2>
@@ -325,7 +325,7 @@ ol.guide b{color:var(--accent)}
       </ol>
       <p class="muted">使うとき：ショートカットを実行 → このアプリのホームで<b>「📋 歩数を取り込む」</b>。<br>
       ※ Apple Watch も使っている場合、歩数が多めに出ることがあります。そのときは検索条件に「ソース」が「iPhone」を追加してください。<br>
-      ※ 取り込み忘れた日は「きろく・実績」から手入力できます。</p>
+      ※ 取り込み忘れた日は「記録・実績」から手入力できます。</p>
     </div>
     <div class="card">
       <h2>あそびかた</h2>
@@ -356,9 +356,9 @@ ol.guide b{color:var(--accent)}
   <button data-go="home">🏠　ホーム</button>
   <button data-go="gacha">🎰　ガチャ</button>
   <button data-go="zukan">📖　コレクション</button>
-  <button data-go="log">🏆　きろく・実績</button>
+  <button data-go="log">🏆　記録・実績</button>
   <button id="drawerManual">✏️　歩数を手入力</button>
-  <button data-go="settings">⚙️　使い方・せってい</button>
+  <button data-go="settings">⚙️　使い方・設定</button>
 </aside>
 
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
@@ -785,7 +785,7 @@ function renderAll() {
       : `<button class="cell locked" data-item="${i.id}"><div class="e">${i.e}</div><div class="nm">？？？</div></button>`;
   }).join('');
 
-  // きろく
+  // 記録
   const days = [];
   for (let k = 13; k >= 0; k--) days.push(dkey(addDays(new Date(), -k)));
   const max = Math.max(S.goal * 1.15, ...days.map(d => S.days[d] || 0));
