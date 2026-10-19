@@ -77,6 +77,7 @@ section.on{display:block;animation:fade .25s}
   color:#fff;font-weight:800;font-size:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .round:active{transform:scale(.96);background:rgba(255,255,255,.1)}
 .round .ri{font-size:32px;line-height:1.2}
+#geoBtn{margin:4px 0 6px}
 .round em{font-style:normal;font-size:11px;color:#bdb9c8;font-weight:700}
 
 /* ---------- メニュー ---------- */
@@ -131,6 +132,12 @@ body.menu-open .drawer-bg{opacity:1;pointer-events:auto}
 .cell .cnt{position:absolute;top:3px;right:6px;font-size:10px;font-weight:800;color:var(--sub)}
 .cell .pt{position:absolute;top:2px;left:5px;font-size:12px}
 .cell.locked .e{filter:brightness(0);opacity:.15}
+.cell.got{border-color:#14b8a6}
+.cell .nm.pn{font-size:9px;margin-top:0;opacity:.8}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:12px}
+.seg button{flex:1;padding:9px;border-radius:9px;font-weight:800;font-size:14px;color:var(--sub)}
+.seg button.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.region{font-size:13px;font-weight:800;color:var(--sub);margin:16px 2px 6px}
 .b-N{border-color:var(--n)} .b-R{border-color:var(--r)} .b-SR{border-color:var(--sr)} .b-SSR{border-color:var(--ssr)}
 .b-UR{border-color:transparent;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#ff5f6d,#ffc371,#47e891,#3fa9ff,#c66bff) border-box}
 .chart{display:flex;gap:4px;height:150px;position:relative}
@@ -251,6 +258,7 @@ ol.guide b{color:var(--accent)}
         <button class="round" data-go="gacha"><span class="ri">🎰</span>ガチャ<em id="hbTickets">🎫 0枚</em></button>
         <button class="round" data-go="zukan"><span class="ri">📖</span>コレクション<em id="hbCol">0 / 40</em></button>
       </div>
+      <button class="chip" id="geoBtn">📍 いまいる県の名物をゲット</button>
       <p class="hint" id="lastSync"></p>
     </div>
   </div>
@@ -280,14 +288,31 @@ ol.guide b{color:var(--accent)}
 <section id="zukan">
   <div class="topbar"><button class="back" data-go="home">‹</button><h1>コレクション</h1></div>
   <div class="body">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <b style="font-size:22px" id="zkCount">0 / 0</b><span class="muted" id="zkPct">0%</span>
-      </div>
-      <div class="prog"><div id="zkBar" style="width:0"></div></div>
-      <p class="muted" style="margin:10px 0 0">💎 かけら <b id="shards" style="font-size:16px;color:var(--text)">0</b>　— キャラをタップすると、かけらで交換したり相棒にしたりできます。</p>
+    <div class="seg">
+      <button data-zk="animals" class="on">🐾 どうぶつ</button>
+      <button data-zk="prefs">📍 ご当地</button>
     </div>
-    <div class="grid" id="zkGrid"></div>
+    <div id="zkAnimals">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <b style="font-size:22px" id="zkCount">0 / 0</b><span class="muted" id="zkPct">0%</span>
+        </div>
+        <div class="prog"><div id="zkBar" style="width:0"></div></div>
+        <p class="muted" style="margin:10px 0 0">💎 かけら <b id="shards" style="font-size:16px;color:var(--text)">0</b>　— キャラをタップすると、かけらで交換したり相棒にしたりできます。</p>
+      </div>
+      <div class="grid" id="zkGrid"></div>
+    </div>
+    <div id="zkPrefs" hidden>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <b style="font-size:22px" id="pfCount">0 / 47</b><span class="muted" id="pfPct">0%</span>
+        </div>
+        <div class="prog"><div id="pfBar" style="width:0"></div></div>
+        <p class="muted" style="margin:10px 0 12px">ホームの「📍 いまいる県の名物をゲット」で、その都道府県の名物が手に入ります。はじめての県は🎫+3枚、別の日にまた来ると🎫+1枚。</p>
+        <button class="btn" id="geoBtn2">📍 いまいる県の名物をゲット</button>
+      </div>
+      <div id="prefList"></div>
+    </div>
   </div>
 </section>
 
@@ -332,7 +357,13 @@ ol.guide b{color:var(--accent)}
       <p class="muted" style="margin:0">🎫 1,000歩ごとにチケット1枚。目標を達成した日はボーナス+3枚。<br>
       ⬆️ 同じキャラが出るとLvアップ＆💎かけら。かけらでキャラと交換できます。<br>
       🐾 コレクションで相棒をえらぶと、黒猫といっしょに歩きます。相棒と歩くと「なかよし度」が上がり、Lvアップでチケット+2枚。<br>
-      🏆 実績を達成するとチケットがもらえて、称号をつけられます。</p>
+      🏆 実績を達成するとチケットがもらえて、称号をつけられます。<br>
+      📍 ホームの「いまいる県の名物をゲット」で、その都道府県の名物がコレクションに入ります。</p>
+    </div>
+    <div class="card">
+      <h2>位置情報について</h2>
+      <p class="muted" style="margin:0">「📍 名物をゲット」を押したときだけ位置情報を使います。都道府県を調べるために、だいたいの位置（約100m単位）を国土地理院のサービスに送ります。アプリに保存されるのは都道府県名だけで、位置そのものは保存しません。<br>
+      位置情報を許可しなかった場合は、iPhoneの「設定 → プライバシーとセキュリティ → 位置情報サービス → Safari Webサイト」で「使用中のみ」にしてください。</p>
     </div>
     <div class="card">
       <h2>1日の目標歩数</h2>
@@ -396,6 +427,30 @@ const ITEMS = [
 ].map(([id, e, name, rar]) => ({ id, e, name, rar }));
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 
+/* ご当地コレクション（都道府県コード順）: [県名, 名物, 絵文字, 県庁の緯度, 経度] */
+const PREF_NEW_TICKETS = 3;
+const PREF_RE_TICKETS = 1;
+const PREFS = [
+  ['北海道','夕張メロン','🍈',43.064,141.347], ['青森県','りんご','🍎',40.824,140.740], ['岩手県','わんこそば','🥣',39.704,141.153],
+  ['宮城県','牛たん','🐮',38.269,140.872], ['秋田県','きりたんぽ','🍢',39.719,140.102], ['山形県','さくらんぼ','🍒',38.240,140.364],
+  ['福島県','桃','🍑',37.750,140.468], ['茨城県','納豆','🫘',36.342,140.447], ['栃木県','宇都宮餃子','🥟',36.566,139.884],
+  ['群馬県','下仁田ねぎ','🥬',36.391,139.061], ['埼玉県','草加せんべい','🍘',35.857,139.649], ['千葉県','落花生','🥜',35.605,140.123],
+  ['東京都','江戸前寿司','🍣',35.690,139.692], ['神奈川県','横浜シウマイ','🥡',35.448,139.643], ['新潟県','コシヒカリ','🍚',37.902,139.023],
+  ['富山県','ホタルイカ','🦑',36.695,137.211], ['石川県','金箔ソフト','🍦',36.594,136.626], ['福井県','越前がに','🦀',36.065,136.222],
+  ['山梨県','ぶどう','🍇',35.664,138.568], ['長野県','信州そば','🥢',36.651,138.181], ['岐阜県','飛騨牛','🥩',35.391,136.722],
+  ['静岡県','静岡茶','🍵',34.977,138.383], ['愛知県','えびフライ','🍤',35.180,136.907], ['三重県','伊勢えび','🦞',34.730,136.509],
+  ['滋賀県','信楽たぬき','🦝',35.004,135.868], ['京都府','抹茶パフェ','🍨',35.021,135.756], ['大阪府','たこ焼き','🐙',34.686,135.520],
+  ['兵庫県','神戸プリン','🍮',34.691,135.183], ['奈良県','鹿せんべい','🦌',34.685,135.833], ['和歌山県','紀州梅干し','🍙',34.226,135.168],
+  ['鳥取県','二十世紀梨','🍐',35.504,134.238], ['島根県','しじみ','🐚',35.472,133.051], ['岡山県','きびだんご','🍡',34.662,133.935],
+  ['広島県','お好み焼き','🥞',34.396,132.459], ['山口県','ふぐ','🐡',34.186,131.471], ['徳島県','すだち','🍋',34.066,134.559],
+  ['香川県','讃岐うどん','🍜',34.340,134.043], ['愛媛県','みかん','🍊',33.842,132.766], ['高知県','カツオのたたき','🐟',33.560,133.531],
+  ['福岡県','辛子明太子','🌶️',33.607,130.418], ['佐賀県','有田焼','🏺',33.249,130.299], ['長崎県','カステラ','🍰',32.745,129.874],
+  ['熊本県','馬刺し','🐴',32.790,130.742], ['大分県','とり天','🍗',33.238,131.613], ['宮崎県','マンゴー','🥭',31.911,131.424],
+  ['鹿児島県','さつまいも','🍠',31.560,130.558], ['沖縄県','ゴーヤー','🥒',26.212,127.681],
+].map(([name, food, e, lat, lon], i) => ({ code: i + 1, name, food, e, lat, lon }));
+const PREF = Object.fromEntries(PREFS.map(p => [p.code, p]));
+const REGIONS = [['北海道・東北', 1, 7], ['関東', 8, 14], ['中部', 15, 23], ['近畿', 24, 30], ['中国', 31, 35], ['四国', 36, 39], ['九州・沖縄', 40, 47]];
+
 const $ = s => document.querySelector(s);
 const fmt = n => Number(n).toLocaleString('ja-JP');
 const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -404,7 +459,7 @@ const lvOf = n => Math.min(MAX_LV, n);
 /* ---------- 保存 ---------- */
 function defaultState() {
   return { days: {}, bonus: {}, used: 0, col: {}, pulls: 0, sinceHigh: 0, history: [], goal: 8000, lastSync: null,
-           shards: 0, extra: 0, ach: {}, titleId: null, partner: null, bond: {} };
+           shards: 0, extra: 0, ach: {}, titleId: null, partner: null, bond: {}, pref: {} };
 }
 function load() {
   try {
@@ -527,6 +582,7 @@ const totalSteps = () => Object.values(S.days).reduce((a, b) => a + b, 0);
 const bestDay = () => Math.max(0, ...Object.values(S.days));
 const goalDays = () => Object.values(S.days).filter(v => v >= S.goal).length;
 const ownedCount = () => ITEMS.filter(i => S.col[i.id]).length;
+const prefCount = () => Object.keys(S.pref).length;
 const ownedFrom = r => ITEMS.filter(i => S.col[i.id] && ORDER.indexOf(i.rar) >= ORDER.indexOf(r)).length;
 const maxBond = () => Math.max(0, ...Object.values(S.bond).map(x => bondInfo(x).lv));
 const maxCharLv = () => Math.max(0, ...Object.values(S.col).map(c => lvOf(c.n)));
@@ -566,6 +622,10 @@ const ACHS = [
   ['l1','⭐','育成上手','キャラを Lv10 にする',10,maxCharLv,5],
   ['b1','🤝','なかよし','相棒のなかよし度 Lv5',5,maxBond,5],
   ['b2','💞','最高の相棒','相棒のなかよし度 Lv10',10,maxBond,15],
+  ['t1','📍','旅のはじまり','ご当地名物を 1県',1,prefCount,1],
+  ['t2','🚃','小旅行','ご当地名物を 5県',5,prefCount,5],
+  ['t3','🚄','全国行脚','ご当地名物を 15県',15,prefCount,10],
+  ['t4','🗾','日本制覇','ご当地名物を 47県すべて',47,prefCount,50],
 ].map(([id, ic, title, desc, goal, v, rw]) => ({ id, ic, title, desc, goal, v, rw }));
 const ACH = Object.fromEntries(ACHS.map(a => [a.id, a]));
 
@@ -662,6 +722,115 @@ function setPartner(id) {
   setTimeout(() => say(`${ITEM[id].name}といっしょに歩くにゃ！`), 400);
 }
 
+/* ---------- ご当地（位置情報） ---------- */
+function getPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject({ code: 0 });
+    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
+  });
+}
+// 国土地理院の逆ジオコーダーで市区町村コードを調べ、上2桁（北海道などは1桁で返ることがある）を県コードにする
+async function lookupPref(lat, lon) {
+  const r = await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}`);
+  if (!r.ok) throw new Error('http ' + r.status);
+  const j = await r.json();
+  const cd = j && j.results ? String(j.results.muniCd || '') : '';
+  const code = cd.length > 3 ? parseInt(cd.slice(0, -3), 10) : 0;
+  return code >= 1 && code <= 47 ? code : 0;
+}
+// 通信できないときの予備：いちばん近い県庁所在地で推定
+function nearestPref(lat, lon) {
+  const rad = x => x * Math.PI / 180;
+  let best = { code: 0, km: Infinity };
+  for (const p of PREFS) {
+    const a = Math.sin(rad(p.lat - lat) / 2) ** 2 + Math.cos(rad(lat)) * Math.cos(rad(p.lat)) * Math.sin(rad(p.lon - lon) / 2) ** 2;
+    const km = 12742 * Math.asin(Math.sqrt(a));
+    if (km < best.km) best = { code: p.code, km };
+  }
+  return best;
+}
+
+let geoBusy = false;
+async function geoCheckIn() {
+  if (geoBusy) return;
+  geoBusy = true;
+  const btns = [$('#geoBtn'), $('#geoBtn2')];
+  btns.forEach(b => { b.textContent = '📍 位置を確認中…'; b.disabled = true; });
+  try {
+    let pos;
+    try { pos = await getPosition(); }
+    catch (e) {
+      toast(e && e.code === 1 ? '位置情報が許可されていません（使い方・せっていを見てね）' : '位置情報を取得できませんでした');
+      return;
+    }
+    const { latitude: lat, longitude: lon } = pos.coords;
+    let code = 0, guessed = false;
+    try { code = await lookupPref(lat, lon); }
+    catch (e) {
+      const n = nearestPref(lat, lon);
+      if (n.km < 150) { code = n.code; guessed = true; }
+    }
+    if (!code) { toast('日本国内の場所が見つかりませんでした'); return; }
+    if (guessed && !confirm(`通信できなかったので、位置から推定しました。\nいま「${PREF[code].name}」にいますか？`)) return;
+    checkIn(code);
+  } finally {
+    geoBusy = false;
+    btns.forEach(b => { b.textContent = '📍 いまいる県の名物をゲット'; b.disabled = false; });
+  }
+}
+
+function checkIn(code) {
+  const k = String(code), v = S.pref[k];
+  if (v && v.last === dkey()) { showPref(code, 'already', 0); return; }
+  const g = v ? PREF_RE_TICKETS : PREF_NEW_TICKETS;
+  S.pref[k] = { first: v ? v.first : Date.now(), count: (v ? v.count : 0) + 1, last: dkey() };
+  S.extra += g;
+  checkAch();
+  renderAll();
+  showPref(code, v ? 'again' : 'new', g);
+}
+function showPref(code, kind, g) {
+  const p = PREF[code], v = S.pref[code], ov = $('#ov');
+  const msg = kind === 'already'
+    ? `きょうはもう${p.name}でゲットしたにゃ<br><span style="opacity:.7;font-size:13px">また明日きてね</span>`
+    : kind === 'new' ? `${p.food}をコレクションに追加！<br>🎫+${g}枚`
+    : `${p.name}に${v.count}日目の訪問！<br>🎫+${g}枚`;
+  ov.onclick = null;
+  ov.innerHTML = `<div style="font-size:15px;opacity:.85">📍 いまいる場所：${p.name}</div>
+    <div class="rc" style="animation:deal .45s forwards;width:100%;max-width:240px;padding:22px 10px;border-color:#14b8a6;margin-top:16px">
+      ${kind === 'new' ? '<div class="new" style="font-size:13px;top:-11px">NEW</div>' : ''}
+      <div class="e" style="font-size:84px">${p.e}</div>
+      <div style="font-size:12px;color:#6b6872;font-weight:700">${p.name}の名物</div>
+      <div class="nm" style="font-size:20px;margin-top:4px">${p.food}</div>
+    </div>
+    <p style="margin:18px 0 0;font-weight:800;text-align:center;line-height:1.6">${msg}</p>
+    <button class="btn" style="max-width:240px;margin-top:22px" id="ovOk">OK</button>`;
+  ov.classList.add('on');
+  $('#ovOk').onclick = () => { ov.classList.remove('on'); flushLater(); };
+}
+function openPref(code) {
+  const p = PREF[code], v = S.pref[code];
+  openSheet(v ? `<div style="text-align:center">
+      <div style="font-size:96px">${p.e}</div>
+      <div class="muted" style="font-weight:700">${p.name}の名物</div>
+      <h3 style="margin:4px 0 6px">${p.food}</h3>
+      <p class="muted">訪れた日数：${v.count}日<br>はじめて訪れた日：${new Date(v.first).toLocaleDateString('ja-JP')}<br>最後に訪れた日：${dlabel(v.last)}</p>
+      <button class="btn sub" id="pClose">とじる</button></div>`
+    : `<div style="text-align:center">
+      <div style="font-size:96px;filter:brightness(0);opacity:.2">${p.e}</div>
+      <h3 style="margin:10px 0 4px">${p.name}の名物：？？？</h3>
+      <p class="muted">${p.name}に行って「📍 名物をゲット」を押すと手に入ります</p>
+      <button class="btn sub" id="pClose">とじる</button></div>`);
+  $('#pClose').onclick = closeSheet;
+}
+let zkTab = 'animals';
+function setZkTab(t) {
+  zkTab = t;
+  document.querySelectorAll('.seg [data-zk]').forEach(b => b.classList.toggle('on', b.dataset.zk === t));
+  $('#zkAnimals').hidden = t !== 'animals';
+  $('#zkPrefs').hidden = t !== 'prefs';
+}
+
 /* ---------- ホームの街 ---------- */
 function rng(seed) {
   return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
@@ -736,6 +905,9 @@ function catLine() {
     const p = ITEM[S.partner];
     L.push(`${p.name}もいっしょだにゃ`, `${p.name}とのなかよし度 Lv${bondInfo(S.bond[S.partner] || 0).lv} だにゃ`);
   } else if (ownedCount()) L.push('コレクションで相棒をえらんでにゃ');
+  const visited = Object.keys(S.pref);
+  if (visited.length) { const p = PREF[pick(visited)]; L.push(`${p.name}の${p.food}、また食べたいにゃ`); }
+  else L.push('「📍 名物をゲット」で、いまいる県の名物が集まるにゃ');
   return pick(L);
 }
 
@@ -754,7 +926,8 @@ function renderAll() {
     ? `🎉 目標達成！ あと <b>${fmt(rest)}</b> 歩でチケット+1`
     : `目標 ${fmt(S.goal)} 歩まで <b>${fmt(S.goal - today)}</b> ／ チケットまで <b>${fmt(rest)}</b>`;
   $('#hbTickets').textContent = `🎫 ${fmt(tk)}枚`;
-  $('#hbCol').textContent = `${owned} / ${ITEMS.length}`;
+  const pc = prefCount();
+  $('#hbCol').textContent = `🐾${owned}/${ITEMS.length}　📍${pc}/47`;
   $('#lastSync').textContent = S.lastSync
     ? `最後の取り込み：${new Date(S.lastSync).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
     : 'まだ歩数を取り込んでいません';
@@ -783,6 +956,19 @@ function renderAll() {
     return c
       ? `<button class="cell b-${i.rar}" data-item="${i.id}">${S.partner === i.id ? '<span class="pt">🐾</span>' : ''}<span class="cnt">Lv${lvOf(c.n)}</span><div class="e">${i.e}</div><div class="nm">${i.name}</div></button>`
       : `<button class="cell locked" data-item="${i.id}"><div class="e">${i.e}</div><div class="nm">？？？</div></button>`;
+  }).join('');
+  $('#pfCount').textContent = `${pc} / ${PREFS.length}`;
+  $('#pfPct').textContent = Math.floor(pc / PREFS.length * 100) + '%';
+  $('#pfBar').style.width = (pc / PREFS.length * 100) + '%';
+  $('#prefList').innerHTML = REGIONS.map(([name, from, to]) => {
+    const ps = PREFS.slice(from - 1, to);
+    const got = ps.filter(p => S.pref[p.code]).length;
+    return `<div class="region">${name}　<span style="font-weight:600">${got} / ${ps.length}</span></div><div class="grid">` + ps.map(p => {
+      const v = S.pref[p.code];
+      return v
+        ? `<button class="cell got" data-pref="${p.code}"><span class="cnt">${v.count}日</span><div class="e">${p.e}</div><div class="nm">${p.food}</div><div class="nm pn">${p.name}</div></button>`
+        : `<button class="cell locked" data-pref="${p.code}"><div class="e">${p.e}</div><div class="nm">？？？</div><div class="nm pn">${p.name}</div></button>`;
+    }).join('') + '</div>';
   }).join('');
 
   // 記録
@@ -956,6 +1142,8 @@ document.addEventListener('click', e => {
   const g = e.target.closest('[data-go]'); if (g) return go(g.dataset.go);
   const it = e.target.closest('[data-item]'); if (it) return openItem(it.dataset.item);
   const dy = e.target.closest('[data-day]'); if (dy) return openManual(dy.dataset.day);
+  const pf = e.target.closest('[data-pref]'); if (pf) return openPref(Number(pf.dataset.pref));
+  const zk = e.target.closest('[data-zk]'); if (zk) return setZkTab(zk.dataset.zk);
   const tt = e.target.closest('[data-title]');
   if (tt) {
     const id = tt.dataset.title;
@@ -970,6 +1158,8 @@ $('#drawerBg').onclick = () => document.body.classList.remove('menu-open');
 $('#drawerManual').onclick = () => { document.body.classList.remove('menu-open'); openManual(); };
 $('#tapArea').onclick = () => say(catLine());
 $('#syncBtn').onclick = syncFromClipboard;
+$('#geoBtn').onclick = geoCheckIn;
+$('#geoBtn2').onclick = geoCheckIn;
 $('#pull1').onclick = () => pull(1);
 $('#pull10').onclick = () => pull(10);
 $('#exportBtn').onclick = openExport;
