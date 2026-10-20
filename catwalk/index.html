@@ -1,0 +1,1246 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="きゃっとウォーク">
+<meta name="theme-color" content="#101014">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>きゃっとウォーク</title>
+<style>
+/* ==================== 色（ダークモードでは下で上書き） ==================== */
+:root{
+  --bg:#f6f3ee; --card:#ffffff; --text:#1d1b20; --sub:#6b6872; --line:#e6e1d9;
+  --accent:#ff6a3d; --accent2:#ff3d6e; --ok:#16a34a;
+  --ground:#101014;                     /* ホームの地面と黒猫の色 */
+  --shadow:0 2px 10px rgba(0,0,0,.06);
+  /* レアリティの色 */
+  --n:#9aa3ad; --r:#3b82f6; --sr:#a855f7; --ssr:#f59e0b;
+  --ur:linear-gradient(90deg,#ff5f6d,#ffc371,#47e891,#3fa9ff,#c66bff);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#17161b; --card:#23222a; --text:#f2f0f5; --sub:#a29fab; --line:#34323c; --shadow:none; }
+}
+
+/* ==================== 全体 ==================== */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI",sans-serif}
+body{-webkit-user-select:none;user-select:none}
+body.at-home{background:var(--ground)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input,textarea{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;width:100%;-webkit-user-select:text;user-select:text}
+/* 画面は .on が付いた section だけ表示する */
+section{display:none}
+section.on{display:block;animation:fade .25s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* ==================== ホーム：上半分（時間で変わる空と影絵の街） ==================== */
+.home{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;max-width:560px;margin:0 auto}
+.sky{background:linear-gradient(180deg,var(--sky-top),var(--sky-middle) 62%,var(--sky-bottom));padding-top:env(safe-area-inset-top)}
+/* 時間帯ごとの色。data-time は setSky() が時刻を見て書きかえる
+   --building：建物の色　--window：窓の色　--window-light：窓の明るさ　--stars：星の見え方（0 で見えない） */
+.sky[data-time=morning]{--sky-top:#7fb3f0;--sky-middle:#f9c6a8;--sky-bottom:#ffe3b8;--building:#5d6390;--window:#fff2c2;--window-light:.4;--stars:0}
+.sky[data-time=day]    {--sky-top:#4f9be0;--sky-middle:#a9d4f5;--sky-bottom:#d9eefc;--building:#50688c;--window:#e9f4ff;--window-light:.35;--stars:0}
+.sky[data-time=evening]{--sky-top:#2e2b6e;--sky-middle:#e8735a;--sky-bottom:#ffb46b;--building:#3a2c5c;--window:#ffd36a;--window-light:.95;--stars:.35}
+.sky[data-time=night]  {--sky-top:#070b22;--sky-middle:#1d2558;--sky-bottom:#34407e;--building:#1a2148;--window:#ffd76a;--window-light:1;--stars:1}
+.world{position:relative}
+.world svg{display:block;width:100%;height:auto}
+.building{fill:var(--building)}
+.window{fill:var(--window);opacity:var(--window-light)}
+.ground-fill{fill:var(--ground)}
+.star{animation:twinkle 3s ease-in-out infinite}
+@keyframes twinkle{50%{opacity:.25}}
+/* 黒猫の吹き出し */
+.bubble{position:absolute;left:50%;top:calc(69.4% - min(17vw,95px));transform:translate(-25%,-100%) scale(.85);opacity:0;
+  background:#fff;color:#1d1b20;font-size:13px;font-weight:700;line-height:1.5;padding:8px 12px;border-radius:14px;
+  width:max-content;max-width:62vw;transition:opacity .2s,transform .2s;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.2);z-index:2}
+.bubble::after{content:"";position:absolute;left:22px;bottom:-7px;border:7px solid transparent;border-top-color:#fff;border-bottom:0}
+.bubble.on{opacity:1;transform:translate(-25%,-100%) scale(1)}
+.tap-area{position:absolute;inset:0;z-index:1}
+
+/* ==================== ホーム：下半分（歩数とボタン） ==================== */
+.home-bottom{flex:1;background:var(--ground);color:#f3f1ea;text-align:center;padding:2px 20px calc(24px + env(safe-area-inset-bottom));margin-top:-1px}
+.week-label{font-size:13px;color:#a9a6b5;letter-spacing:.12em}
+.week-steps{font-size:clamp(44px,14vw,60px);font-weight:900;line-height:1.15;font-variant-numeric:tabular-nums}
+.week-steps small{font-size:18px;margin-left:4px;color:#a9a6b5;font-weight:700}
+.underline{height:2px;width:80%;margin:4px auto 14px;opacity:.85;
+  background:linear-gradient(90deg,transparent,#f3f1ea 12%,#f3f1ea 88%,transparent)}
+.today-row{display:flex;justify-content:center;align-items:center;gap:12px;font-size:14px;color:#cfccd8;flex-wrap:wrap}
+.today-row b{color:#fff;font-size:18px}
+.chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:999px;padding:7px 13px;font-size:13px;font-weight:700}
+.chip:active{background:rgba(255,255,255,.2)}
+.home-bottom .pref-button{margin:4px 0 6px}
+.today-progress{height:6px;width:70%;margin:12px auto 4px;background:rgba(255,255,255,.12);border-radius:9px;overflow:hidden}
+.today-progress div{height:100%;width:0;background:linear-gradient(90deg,#ffb347,#ff6a3d);border-radius:9px;transition:width .5s}
+.hint{font-size:12px;color:#8e8a9a;margin:4px 0}
+.hint b{color:#d9d6e2}
+.big-buttons{display:flex;justify-content:center;gap:clamp(14px,6vw,28px);margin:22px 0 12px}
+.round-button{width:clamp(118px,36vw,140px);aspect-ratio:1;border-radius:50%;border:2.5px solid rgba(255,255,255,.85);background:rgba(255,255,255,.04);
+  color:#fff;font-weight:800;font-size:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.round-button:active{transform:scale(.96);background:rgba(255,255,255,.1)}
+.round-button .icon{font-size:32px;line-height:1.2}
+.round-button em{font-style:normal;font-size:11px;color:#bdb9c8;font-weight:700}
+
+/* ==================== メニュー（右上の☰） ==================== */
+.menu-button{position:fixed;top:calc(10px + env(safe-area-inset-top));right:max(12px,calc(50% - 268px));z-index:15;width:42px;height:42px;
+  border-radius:50%;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.menu-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .25s;z-index:16}
+.menu{position:fixed;top:0;right:0;bottom:0;width:min(280px,80vw);background:var(--card);z-index:17;transform:translateX(100%);transition:transform .25s;
+  padding:calc(22px + env(safe-area-inset-top)) 12px 20px;display:flex;flex-direction:column;gap:2px}
+body.menu-open .menu{transform:none}
+body.menu-open .menu-backdrop{opacity:1;pointer-events:auto}
+.menu button{text-align:left;padding:14px 12px;border-radius:12px;font-size:16px;font-weight:700}
+.menu button:active,.menu button.current{background:var(--bg)}
+.menu-title{font-size:13px;color:var(--sub);padding:0 12px 10px;font-weight:700}
+
+/* ==================== ホーム以外の画面の共通部品 ==================== */
+.topbar{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:4px;padding:calc(10px + env(safe-area-inset-top)) 64px 10px 6px;background:var(--bg)}
+.topbar h1{font-size:18px;margin:0;font-weight:800}
+.back{font-size:32px;width:42px;height:42px;line-height:1;color:var(--sub)}
+.page{padding:4px 16px calc(24px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:18px;padding:16px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 10px;color:var(--sub);font-weight:700}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border-radius:14px;font-weight:800;font-size:16px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 14px rgba(255,80,80,.25)}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.4;box-shadow:none}
+.btn.plain{background:var(--bg);color:var(--text);border:1px solid var(--line);box-shadow:none;font-weight:700}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+.muted{color:var(--sub);font-size:13px;line-height:1.6}
+.progress{height:10px;background:var(--bg);border-radius:99px;overflow:hidden;margin:8px 0 2px}
+.progress div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;transition:width .4s}
+
+/* レアリティごとの色。--c に色を入れて、枠やラベルで使う */
+.N{--c:var(--n)} .R{--c:var(--r)} .SR{--c:var(--sr)} .SSR{--c:var(--ssr)} .UR{--c:#fff} .visited{--c:#14b8a6}
+.rarity-tag{display:inline-block;min-width:38px;text-align:center;font-size:11px;font-weight:900;color:#fff;border-radius:6px;padding:2px 6px;background:var(--c)}
+.rarity-tag.UR{background:var(--ur)}
+
+/* ==================== ガチャ画面 ==================== */
+.machine{height:200px;display:flex;align-items:center;justify-content:center}
+.globe{width:170px;height:170px;border-radius:50%;border:5px solid var(--accent);position:relative;overflow:hidden;
+  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.9),rgba(255,255,255,.15) 40%),linear-gradient(160deg,#ffd9c7,#ffc2d4)}
+.globe .ball{position:absolute;width:40px;height:40px;border-radius:50%;border:2px solid rgba(0,0,0,.15)}
+.ticket-line{text-align:center;margin:0 0 12px;font-weight:800}
+.ticket-line span{font-size:20px}
+.history{display:flex;flex-wrap:wrap;gap:6px;font-size:24px}
+.rate-table{width:100%;border-collapse:collapse;font-size:13px}
+.rate-table td{padding:5px 0;border-bottom:1px solid var(--line)}
+.rate-table td:last-child{text-align:right;color:var(--sub)}
+
+/* ==================== コレクション画面 ==================== */
+.tabs{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:12px}
+.tabs button{flex:1;padding:9px;border-radius:9px;font-weight:800;font-size:14px;color:var(--sub)}
+.tabs button.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.count-row{display:flex;justify-content:space-between;align-items:baseline}
+.count-row b{font-size:22px}
+.region{font-size:13px;font-weight:800;color:var(--sub);margin:16px 2px 6px}
+.region span{font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cell{background:var(--card);border:2px solid var(--c,var(--line));border-radius:14px;aspect-ratio:1/1.15;width:100%;padding:4px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.cell.UR{border-color:transparent;background:linear-gradient(var(--card),var(--card)) padding-box,var(--ur) border-box}
+.cell .emoji{font-size:34px;line-height:1.1}
+.cell .name{font-size:10px;color:var(--sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.cell .pref-name{font-size:9px;margin-top:0;opacity:.8}
+.cell .count{position:absolute;top:3px;right:6px;font-size:10px;font-weight:800;color:var(--sub)}
+.cell.locked .emoji{filter:brightness(0);opacity:.15}
+
+/* ==================== 記録画面 ==================== */
+.chart{display:flex;gap:4px;height:150px;position:relative}
+.chart .bar{flex:1;display:flex;flex-direction:column;height:100%}
+.chart .bar-area{flex:1;display:flex;align-items:flex-end}
+.chart .bar-fill{width:100%;border-radius:5px 5px 2px 2px;background:var(--line);min-height:2px}
+.chart .bar-fill.reached{background:linear-gradient(180deg,var(--accent),var(--accent2))}
+.chart small{height:16px;line-height:16px;text-align:center;font-size:9px;color:var(--sub)}
+.chart .goal-line{position:absolute;left:0;right:0;border-top:2px dashed var(--ok);opacity:.6}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:var(--bg);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-size:20px}
+.stat span{font-size:12px;color:var(--sub)}
+.day-row{display:flex;justify-content:space-between;align-items:center;padding:11px 2px;border-bottom:1px solid var(--line);width:100%}
+.day-row:last-child{border:0}
+.day-row b{font-variant-numeric:tabular-nums}
+.done{color:var(--ok);font-size:12px;font-weight:800;margin-left:6px}
+
+/* ==================== 使い方・設定画面 ==================== */
+ol.guide{padding-left:20px;margin:6px 0;line-height:1.75;font-size:14px}
+ol.guide b{color:var(--accent)}
+
+/* ==================== 下から出るシート ==================== */
+.sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.sheet-backdrop.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));
+  animation:slide-up .25s;max-height:88vh;overflow:auto}
+@keyframes slide-up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.sheet h3{margin:0 0 12px}
+.sheet label{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
+.sheet-center{text-align:center}
+.sheet-center h3{margin:10px 0 4px}
+.big-emoji{font-size:96px}
+.silhouette{filter:brightness(0);opacity:.2}
+
+/* ==================== ガチャ・ご当地の演出（全画面） ==================== */
+.overlay{position:fixed;inset:0;z-index:30;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,8,20,.9);color:#fff;padding:20px}
+.overlay.on{display:flex}
+.overlay .btn{max-width:240px;margin-top:24px}
+/* カプセル：上半分の色（--cap）は出た中でいちばん高いレアリティの色 */
+.capsule{width:150px;height:150px;border-radius:50%;border:5px solid #fff;animation:shake .45s infinite;position:relative;overflow:hidden;
+  background:linear-gradient(transparent 50%,#fff 50%),var(--cap)}
+.capsule::after{content:"";position:absolute;left:0;right:0;top:calc(50% - 3px);height:6px;background:rgba(0,0,0,.2)}
+.capsule.open{animation:pop .45s forwards}
+@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+@keyframes pop{to{transform:scale(2.4);opacity:0}}
+.tap-note{margin-top:24px;opacity:.7;font-size:14px}
+.flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:31}
+.flash.go{animation:flash .6s}
+@keyframes flash{0%{opacity:.9}100%{opacity:0}}
+/* 結果カード（1枚のときは大きく、10枚のときは5列） */
+.results{display:grid;gap:10px;width:100%;max-width:420px}
+.results.single{grid-template-columns:1fr;max-width:240px}
+.results.multi{grid-template-columns:repeat(5,1fr)}
+.result-card{background:#fff;color:#1d1b20;border-radius:14px;padding:8px 4px;text-align:center;border:3px solid var(--c);position:relative;
+  opacity:0;animation:deal .35s forwards}
+@keyframes deal{from{opacity:0;transform:translateY(16px) rotateY(90deg)}to{opacity:1;transform:none}}
+.result-card.SR{box-shadow:0 0 16px var(--c)}
+.result-card.SSR{box-shadow:0 0 24px var(--c)}
+.result-card.UR{box-shadow:0 0 30px #c66bff,0 0 60px #3fa9ff}
+.result-card .emoji{font-size:30px}
+.result-card .name{font-size:9px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result-card .new-badge{position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:var(--accent2);color:#fff;
+  font-size:9px;font-weight:900;padding:1px 6px;border-radius:6px;white-space:nowrap}
+.results.single .result-card{padding:22px 10px}
+.results.single .emoji{font-size:84px}
+.results.single .name{font-size:18px;margin-top:6px}
+.results.single .rarity-tag{font-size:14px}
+.results.single .new-badge{font-size:13px;top:-11px}
+.result-card .food-of{font-size:12px;color:#6b6872;font-weight:700}
+.result-message{margin:18px 0 0;font-weight:800;text-align:center;line-height:1.6}
+.result-message small{opacity:.7;font-size:13px}
+
+/* ==================== 上から出るお知らせ ==================== */
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%) translateY(calc(-100% - 40px - env(safe-area-inset-top)));
+  background:#1d1b20;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;font-weight:700;z-index:40;transition:transform .3s;
+  width:max-content;max-width:90vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.toast.on{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body class="at-home">
+
+<!-- ==================== ホーム ==================== -->
+<section id="home" class="on">
+  <div class="home">
+
+    <!-- 上半分：時間で変わる空と影絵の街。黒猫はその場で足踏みし、街のほうが回るので歩いているように見える -->
+    <div class="sky" id="sky" data-time="evening">
+      <div class="world">
+        <svg viewBox="0 0 400 360" aria-hidden="true">
+          <g id="stars" style="opacity:var(--stars)"></g>
+          <circle id="sun" cx="320" cy="165" r="20" fill="#ffc27a"/>  <!-- 太陽または月 -->
+          <defs>
+            <!-- 街の画像（白一色）を「型」として使い、色は時間帯ごとに CSS で塗る -->
+            <mask id="cityMask"><image href="city.png" x="-410" y="90" width="1220" height="1220"/></mask>
+            <mask id="windowMask"><image href="windows.png" x="-410" y="90" width="1220" height="1220"/></mask>
+          </defs>
+          <g id="city">
+            <animateTransform attributeName="transform" type="rotate" from="0 200 700" to="-360 200 700" dur="240s" repeatCount="indefinite"/>
+            <!-- 画像の中心が回転の中心（200,700）に来る位置。画像の半径 610 = 地面の半径 450 + いちばん高いビル -->
+            <rect class="building" x="-410" y="90" width="1220" height="1220" mask="url(#cityMask)"/>
+            <rect class="window" x="-410" y="90" width="1220" height="1220" mask="url(#windowMask)"/>
+          </g>
+          <circle class="ground-fill" cx="200" cy="700" r="450"/>
+          <!-- 黒猫 -->
+          <g transform="translate(200 251) scale(1.2)" class="ground-fill">
+            <g>
+              <animateTransform attributeName="transform" type="translate" values="0 0;0 -1.2;0 0" dur="0.35s" repeatCount="indefinite"/>
+              <!-- しっぽ -->
+              <path d="M-19,-27 C-33,-30 -38,-42 -32,-55" style="fill:none;stroke:var(--ground)" stroke-width="4.5" stroke-linecap="round">
+                <animateTransform attributeName="transform" type="rotate" values="0 -19 -27;-9 -19 -27;0 -19 -27" dur="1.4s" repeatCount="indefinite"/>
+              </path>
+              <!-- 足4本 -->
+              <rect x="-16" y="-19" width="4.5" height="19" rx="2"><animateTransform attributeName="transform" type="rotate" values="22 -13.7 -17;-22 -13.7 -17;22 -13.7 -17" dur="0.7s" repeatCount="indefinite"/></rect>
+              <rect x="-9" y="-19" width="4.5" height="19" rx="2"><animateTransform attributeName="transform" type="rotate" values="-22 -6.7 -17;22 -6.7 -17;-22 -6.7 -17" dur="0.7s" repeatCount="indefinite"/></rect>
+              <rect x="9" y="-19" width="4.5" height="19" rx="2"><animateTransform attributeName="transform" type="rotate" values="-22 11.3 -17;22 11.3 -17;-22 11.3 -17" dur="0.7s" repeatCount="indefinite"/></rect>
+              <rect x="15" y="-19" width="4.5" height="19" rx="2"><animateTransform attributeName="transform" type="rotate" values="22 17.3 -17;-22 17.3 -17;22 17.3 -17" dur="0.7s" repeatCount="indefinite"/></rect>
+              <!-- 胴体・頭・耳・目 -->
+              <ellipse cx="1" cy="-24" rx="22" ry="10"/>
+              <circle cx="22" cy="-34" r="10"/>
+              <polygon points="14,-40 15,-53 23,-43"/>
+              <polygon points="22,-43 30,-52 31,-38"/>
+              <circle cx="26.5" cy="-35.5" r="1.7" fill="#ffd84d"/>
+            </g>
+          </g>
+        </svg>
+        <div class="bubble" id="bubble"></div>
+        <div class="tap-area" id="catTapArea"></div>
+      </div>
+    </div>
+
+    <!-- 下半分：歩数とボタン -->
+    <div class="home-bottom">
+      <div class="week-label">直近7日の総歩数</div>
+      <div class="week-steps"><span id="weekSteps"></span><small>歩</small></div>
+      <div class="underline"></div>
+      <div class="today-row">
+        <span>きょう <b id="todaySteps"></b> 歩</span>
+        <button class="chip" id="importButton">📋 歩数を取り込む</button>
+      </div>
+      <div class="today-progress"><div id="todayBar"></div></div>
+      <p class="hint" id="nextTicketText"></p>
+      <div class="big-buttons">
+        <button class="round-button" data-go="gacha"><span class="icon">🎰</span>ガチャ<em id="homeTickets"></em></button>
+        <button class="round-button" data-go="collection"><span class="icon">📖</span>コレクション<em id="homeCollection"></em></button>
+      </div>
+      <button class="chip pref-button">今いる県の名物をゲット</button>
+      <p class="hint" id="lastSyncText"></p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ==================== ガチャ ==================== -->
+<section id="gacha">
+  <div class="topbar"><button class="back" data-go="home">‹</button><h1>ガチャ</h1></div>
+  <div class="page">
+    <div class="card">
+      <div class="machine"><div class="globe" id="globe"></div></div>
+      <p class="ticket-line">🎫 いまのチケット <span id="gachaTickets"></span> 枚</p>
+      <div class="row">
+        <button class="btn" id="pull1Button">1回ひく<br>🎫1</button>
+        <button class="btn" id="pull10Button">10連ひく<br>🎫10</button>
+      </div>
+    </div>
+    <div class="card"><h2>最近の結果</h2><div class="history" id="historyList"></div></div>
+    <div class="card"><h2>排出率</h2><table class="rate-table" id="rateTable"></table></div>
+  </div>
+</section>
+
+<!-- ==================== コレクション ==================== -->
+<section id="collection">
+  <div class="topbar"><button class="back" data-go="home">‹</button><h1>コレクション</h1></div>
+  <div class="page">
+    <div class="tabs">
+      <button data-tab="animals" class="on">🐾 どうぶつ</button>
+      <button data-tab="prefs">ご当地</button>
+    </div>
+
+    <!-- どうぶつ -->
+    <div id="animalsTab">
+      <div class="card">
+        <div class="count-row"><b id="animalCount"></b><span class="muted" id="animalPercent"></span></div>
+        <div class="progress"><div id="animalBar"></div></div>
+      </div>
+      <div class="grid" id="animalGrid"></div>
+    </div>
+
+    <!-- ご当地 -->
+    <div id="prefsTab" hidden>
+      <div class="card">
+        <div class="count-row"><b id="prefCount"></b><span class="muted" id="prefPercent"></span></div>
+        <div class="progress"><div id="prefBar"></div></div>
+        <p class="muted" style="margin:10px 0 12px">ホームの「今いる県の名物をゲット」で、その都道府県の名物が手に入ります。はじめての県は🎫+3枚、別の日にまた来ると🎫+1枚。</p>
+        <button class="btn pref-button">今いる県の名物をゲット</button>
+      </div>
+      <div id="prefList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 記録 ==================== -->
+<section id="log">
+  <div class="topbar"><button class="back" data-go="home">‹</button><h1>記録</h1></div>
+  <div class="page">
+    <div class="card"><h2>最近7日</h2><div class="chart" id="chart"></div></div>
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><b id="statTotal"></b><span>合計歩数</span></div>
+        <div class="stat"><b id="statBest"></b><span>最高記録</span></div>
+        <div class="stat"><b id="statStreak"></b><span>目標達成の連続日数</span></div>
+        <div class="stat"><b id="statPulls"></b><span>ガチャを引いた回数</span></div>
+      </div>
+    </div>
+    <div class="card"><h2>日ごとの記録 <span class="muted">（タップで修正）</span></h2><div id="dayList"></div></div>
+  </div>
+</section>
+
+<!-- ==================== 使い方・設定 ==================== -->
+<section id="settings">
+  <div class="topbar"><button class="back" data-go="home">‹</button><h1>使い方・設定</h1></div>
+  <div class="page">
+    <div class="card">
+      <h2>歩数の取り込みかた（はじめに1回だけ設定）</h2>
+      <p class="muted" style="margin:0 0 6px">iPhoneの「ショートカット」アプリで、ヘルスケアの歩数をコピーするショートカットを作ります。</p>
+      <ol class="guide">
+        <li>「ショートカット」アプリを開き、右上の <b>＋</b></li>
+        <li><b>「ヘルスケアサンプルを検索」</b>を追加 → 種類を<b>「歩数」</b>にし、条件を<b>「開始日」が「今日」</b>にする</li>
+        <li><b>「統計を計算」</b>を追加 →<b>「合計」</b>を選ぶ</li>
+        <li><b>「クリップボードにコピー」</b>を追加</li>
+        <li>名前を「歩数コピー」にして保存。初回実行時はヘルスケアへのアクセスを<b>許可</b></li>
+      </ol>
+      <p class="muted">使うとき：ショートカットを実行 → このアプリのホームで<b>「📋 歩数を取り込む」</b>。<br>
+      ※ Apple Watch も使っている場合、歩数が多めに出ることがあります。そのときは検索条件に「ソース」が「iPhone」を追加してください。<br>
+      ※ 取り込み忘れた日は「記録」から手入力できます。</p>
+    </div>
+    <div class="card">
+      <h2>あそびかた</h2>
+      <p class="muted" style="margin:0">🎫 1,000歩ごとにチケット1枚。目標を達成した日はボーナス+3枚。<br>
+      ホームの「今いる県の名物をゲット」で、その都道府県の名物がコレクションに入ります。</p>
+    </div>
+    <div class="card">
+      <h2>位置情報について</h2>
+      <p class="muted" style="margin:0">「名物をゲット」を押したときだけ位置情報を使います。都道府県を調べるために、だいたいの位置（約100m単位）を国土地理院のサービスに送ります。アプリに保存されるのは都道府県名だけで、位置そのものは保存しません。<br>
+      位置情報を許可しなかった場合は、iPhoneの「設定 → プライバシーとセキュリティ → 位置情報サービス → Safari Webサイト」で「使用中のみ」にしてください。</p>
+    </div>
+    <div class="card">
+      <h2>1日の目標歩数</h2>
+      <div class="row"><input type="number" inputmode="numeric" id="goalInput" min="1000" step="500"><button class="btn plain" id="goalSaveButton" style="flex:0 0 90px">保存</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== メニュー ==================== -->
+<button class="menu-button" id="menuButton" aria-label="メニュー">
+  <svg width="20" height="16" viewBox="0 0 20 16"><path d="M1 2h18M1 8h18M1 14h18" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+</button>
+<div class="menu-backdrop" id="menuBackdrop"></div>
+<aside class="menu">
+  <div class="menu-title">メニュー</div>
+  <button data-go="home">🏠　ホーム</button>
+  <button data-go="gacha">🎰　ガチャ</button>
+  <button data-go="collection">📖　コレクション</button>
+  <button data-go="log">📊　記録</button>
+  <button id="menuStepInput">✏️　歩数を手入力</button>
+  <button data-go="settings">⚙️　使い方・設定</button>
+</aside>
+
+<!-- ==================== 重ねて表示するもの ==================== -->
+<div class="sheet-backdrop" id="sheetBackdrop"><div class="sheet" id="sheet"></div></div>
+<div class="overlay" id="overlay"></div>
+<div class="flash" id="flash"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   設定
+   ============================================================ */
+const SAVE_KEY = 'arukugacha.v1';   // 保存場所の名前（変えると今までのデータが読めなくなる）
+const STEPS_PER_TICKET = 1000;      // 何歩でチケット1枚か
+const GOAL_BONUS_TICKETS = 3;       // 目標を達成した日のボーナス
+const PREF_FIRST_TICKETS = 3;       // はじめての県でもらえるチケット
+const PREF_AGAIN_TICKETS = 1;       // 別の日にまた同じ県でもらえるチケット
+const HISTORY_SIZE = 20;            // ガチャの「最近の結果」に残す数
+
+// レアリティ（低い順）と、それぞれが出る確率（%）。合計が100になるようにする
+const RARITIES = ['N', 'R', 'SR', 'SSR', 'UR'];
+const RATES = { N: 55, R: 30, SR: 11, SSR: 3.5, UR: 0.5 };
+
+// どうぶつコレクション：[ID, 絵文字, 名前, レアリティ]
+// ※ IDは保存データで使っているので変えないこと
+const ANIMALS = [
+  ['n01','🐜','アリ','N'], ['n02','🐌','カタツムリ','N'], ['n03','🐛','イモムシ','N'], ['n04','🐞','テントウムシ','N'],
+  ['n05','🐟','サカナ','N'], ['n06','🐤','ヒヨコ','N'], ['n07','🐸','カエル','N'], ['n08','🐭','ネズミ','N'],
+  ['n09','🍄','キノコ','N'], ['n10','🌱','ふたば','N'], ['n11','🍀','クローバー','N'], ['n12','🪨','いし','N'],
+  ['n13','🐚','カイガラ','N'], ['n14','🌰','どんぐり','N'], ['n15','🐝','ミツバチ','N'], ['n16','🦋','チョウ','N'],
+  ['r01','🐶','イヌ','R'], ['r02','🐱','ネコ','R'], ['r03','🐰','ウサギ','R'], ['r04','🦊','キツネ','R'],
+  ['r05','🐼','パンダ','R'], ['r06','🐨','コアラ','R'], ['r07','🐧','ペンギン','R'], ['r08','🦉','フクロウ','R'],
+  ['r09','🐢','カメ','R'], ['r10','🦔','ハリネズミ','R'], ['r11','🐙','タコ','R'], ['r12','🦀','カニ','R'],
+  ['s01','🦁','ライオン','SR'], ['s02','🐯','トラ','SR'], ['s03','🐘','ゾウ','SR'], ['s04','🦒','キリン','SR'],
+  ['s05','🐬','イルカ','SR'], ['s06','🦩','フラミンゴ','SR'], ['s07','🦚','クジャク','SR'],
+  ['x01','🦄','ユニコーン','SSR'], ['x02','🐉','ドラゴン','SSR'], ['x03','🦖','ティラノ','SSR'], ['x04','🐋','クジラ','SSR'],
+  ['u01','🌈','にじのせいれい','UR'],
+].map(([id, emoji, name, rarity]) => ({ id, emoji, name, rarity }));
+const ANIMAL_BY_ID = Object.fromEntries(ANIMALS.map(a => [a.id, a]));
+
+// ご当地コレクション：都道府県コードの順（1 = 北海道 〜 47 = 沖縄）。[県名, 名物, 絵文字]
+const PREFS = [
+  ['北海道','夕張メロン','🍈'], ['青森県','りんご','🍎'], ['岩手県','わんこそば','🥣'],
+  ['宮城県','牛たん','🐮'], ['秋田県','きりたんぽ','🍢'], ['山形県','さくらんぼ','🍒'],
+  ['福島県','桃','🍑'], ['茨城県','納豆','🫘'], ['栃木県','宇都宮餃子','🥟'],
+  ['群馬県','下仁田ねぎ','🥬'], ['埼玉県','草加せんべい','🍘'], ['千葉県','落花生','🥜'],
+  ['東京都','江戸前寿司','🍣'], ['神奈川県','横浜シウマイ','🥡'], ['新潟県','コシヒカリ','🍚'],
+  ['富山県','ホタルイカ','🦑'], ['石川県','金箔ソフト','🍦'], ['福井県','越前がに','🦀'],
+  ['山梨県','ぶどう','🍇'], ['長野県','信州そば','🥢'], ['岐阜県','飛騨牛','🥩'],
+  ['静岡県','静岡茶','🍵'], ['愛知県','えびフライ','🍤'], ['三重県','伊勢えび','🦞'],
+  ['滋賀県','信楽たぬき','🦝'], ['京都府','抹茶パフェ','🍨'], ['大阪府','たこ焼き','🐙'],
+  ['兵庫県','神戸プリン','🍮'], ['奈良県','鹿せんべい','🦌'], ['和歌山県','紀州梅干し','🍙'],
+  ['鳥取県','二十世紀梨','🍐'], ['島根県','しじみ','🐚'], ['岡山県','きびだんご','🍡'],
+  ['広島県','お好み焼き','🥞'], ['山口県','ふぐ','🐡'], ['徳島県','すだち','🍋'],
+  ['香川県','讃岐うどん','🍜'], ['愛媛県','みかん','🍊'], ['高知県','カツオのたたき','🐟'],
+  ['福岡県','辛子明太子','🌶️'], ['佐賀県','有田焼','🏺'], ['長崎県','カステラ','🍰'],
+  ['熊本県','馬刺し','🐴'], ['大分県','とり天','🍗'], ['宮崎県','マンゴー','🥭'],
+  ['鹿児島県','さつまいも','🍠'], ['沖縄県','ゴーヤー','🥒'],
+].map(([name, food, emoji], i) => ({ code: i + 1, name, food, emoji }));
+const PREF_BY_CODE = Object.fromEntries(PREFS.map(p => [p.code, p]));
+
+// 地方の区切り：[地方名, 最初の県コード, 最後の県コード]
+const REGIONS = [['北海道・東北', 1, 7], ['関東', 8, 14], ['中部', 15, 23], ['近畿', 24, 30], ['中国', 31, 35], ['四国', 36, 39], ['九州・沖縄', 40, 47]];
+
+
+/* ============================================================
+   小さな便利関数
+   ============================================================ */
+const $ = selector => document.querySelector(selector);        // 要素を1つ取り出す
+const $$ = selector => document.querySelectorAll(selector);    // 要素をすべて取り出す
+const formatNumber = n => Number(n).toLocaleString('ja-JP');   // 8123 → "8,123"
+const randomPick = list => list[Math.floor(Math.random() * list.length)];
+const percent = (part, whole) => part / whole * 100;
+
+
+/* ============================================================
+   日付
+   日付は "2026-10-19" の形の文字列（dateKey）で扱う。
+   この形なら文字列のまま大小を比べても日付の順になる。
+   ============================================================ */
+function dateKey(date = new Date()) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+function keyToDate(key) {
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+function addDays(date, n) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + n);
+  return result;
+}
+const todayKey = () => dateKey();
+const daysAgoKey = n => dateKey(addDays(new Date(), -n));   // n日前の dateKey
+
+// "2026-10-19" → "10/19（月）"
+function dateLabel(key) {
+  const date = keyToDate(key);
+  return `${date.getMonth() + 1}/${date.getDate()}（${'日月火水木金土'[date.getDay()]}）`;
+}
+
+
+/* ============================================================
+   保存データ（この端末の localStorage に保存する）
+   ※ 項目名は保存データで使っているので変えないこと
+   ============================================================ */
+function newState() {
+  return {
+    days: {},        // 日ごとの歩数          例: { "2026-10-19": 8123 }
+    bonus: {},       // 目標達成ボーナスをもらった日  例: { "2026-10-19": true }
+    used: 0,         // ガチャで使ったチケットの合計
+    col: {},         // 持っているどうぶつ       例: { "r02": { n: 引いた数, first: 初めて出た日時 } }
+    pulls: 0,        // ガチャを引いた回数
+    history: [],     // 最近のガチャ結果（新しい順）
+    goal: 8000,      // 1日の目標歩数
+    lastSync: null,  // 最後に歩数を取り込んだ日時
+    extra: 0,        // 歩数以外でもらったチケット（ご当地など）
+    pref: {},        // 訪れた県               例: { "43": { first, count: 訪れた日数, last: 最後に訪れた日 } }
+  };
+}
+function loadState() {
+  try {
+    const saved = localStorage.getItem(SAVE_KEY);
+    // 保存データにない項目は newState() の初期値で補う
+    if (saved) return Object.assign(newState(), JSON.parse(saved));
+  } catch (e) { /* 読めなければ新しく始める */ }
+  return newState();
+}
+function saveState() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+  catch (e) { toast('⚠️ 保存できませんでした'); }
+}
+let state = loadState();
+
+
+/* ============================================================
+   お知らせ（画面上部）。重ならないよう1つずつ順番に出す
+   ============================================================ */
+const toastQueue = [];
+let toastShowing = false;
+function toast(message) {
+  toastQueue.push(message);
+  if (!toastShowing) showNextToast();
+}
+function showNextToast() {
+  const message = toastQueue.shift();
+  if (!message) { toastShowing = false; return; }
+  toastShowing = true;
+  const box = $('#toast');
+  box.textContent = message;
+  box.classList.add('on');
+  setTimeout(() => {
+    box.classList.remove('on');
+    setTimeout(showNextToast, 350);
+  }, 2400);
+}
+
+
+/* ============================================================
+   チケット
+   枚数そのものは保存せず、毎回「もらった合計 − 使った合計」で計算する。
+   こうすると同じ日の歩数を何度取り込んでも二重に増えない。
+   ============================================================ */
+function ticketsFromSteps() {
+  let total = 0;
+  for (const steps of Object.values(state.days)) total += Math.floor(steps / STEPS_PER_TICKET);
+  return total + Object.keys(state.bonus).length * GOAL_BONUS_TICKETS;
+}
+function ticketCount() {
+  return Math.max(0, ticketsFromSteps() + state.extra - state.used);
+}
+
+
+/* ============================================================
+   歩数の記録
+   ============================================================ */
+
+// 1日分の歩数を記録する。
+// mode が 'max' なら今の記録より多いときだけ更新（取り込み用）、'set' ならそのまま上書き（手入力用）。
+// この記録で目標達成ボーナスが初めてついたら true を返す。
+function recordSteps(key, steps, mode) {
+  steps = Math.max(0, Math.round(steps));
+  const oldSteps = state.days[key] || 0;
+  const newSteps = mode === 'max' ? Math.max(oldSteps, steps) : steps;
+  if (newSteps > 0) state.days[key] = newSteps;
+  else delete state.days[key];
+
+  if (newSteps >= state.goal && !state.bonus[key]) {
+    state.bonus[key] = true;
+    return true;
+  }
+  return false;
+}
+
+// 文字から歩数を読み取る。結果は [[dateKey, 歩数], ...]
+//   "8123"                       → きょうの歩数
+//   "2026-10-15: 8123"（複数行可） → その日の歩数
+function parseStepsText(text) {
+  const entries = [];
+  const datePattern = /(\d{4})[-\/年](\d{1,2})[-\/月](\d{1,2})日?\D+?([\d,]+(?:\.\d+)?)/g;
+  let match;
+  while ((match = datePattern.exec(text))) {
+    const key = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+    entries.push([key, parseFloat(match[4].replace(/,/g, ''))]);
+  }
+  // 日付が見つからなければ、最初の数字をきょうの歩数とみなす
+  if (!entries.length) {
+    const number = String(text).replace(/[,，\s]/g, '').match(/\d+(\.\d+)?/);
+    if (number) entries.push([todayKey(), parseFloat(number[0])]);
+  }
+  // おかしな値と未来の日付は除く
+  return entries.filter(([key, steps]) => isFinite(steps) && steps >= 0 && steps < 200000 && key <= todayKey());
+}
+
+// 読み取った歩数をまとめて記録し、結果をお知らせする
+function importSteps(entries) {
+  const ticketsBefore = ticketsFromSteps();
+  let gotBonus = false;
+  for (const [key, steps] of entries) {
+    if (recordSteps(key, steps, 'max')) gotBonus = true;
+  }
+  state.lastSync = Date.now();
+  saveState();
+
+  const gained = ticketsFromSteps() - ticketsBefore;
+  const hasToday = entries.some(([key]) => key === todayKey());
+  let message = hasToday ? `👣 きょう ${formatNumber(state.days[todayKey()] || 0)} 歩` : `👣 ${entries.length}日分を記録`;
+  if (gained > 0) message += ` ／ 🎫+${gained}枚`;
+  if (gotBonus) message += ' 🎉目標達成ボーナス!';
+  toast(message);
+  renderAll();
+  setTimeout(() => catSay(randomCatLine()), 500);
+}
+
+// 「📋 歩数を取り込む」：クリップボードを読む。読めなければ貼り付け用のシートを出す
+async function importFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.readText) return openPasteSheet('');
+  try {
+    const text = await navigator.clipboard.readText();
+    const entries = parseStepsText(text);
+    if (entries.length) {
+      importSteps(entries);
+    } else {
+      toast('クリップボードに歩数が見つかりません');
+      openPasteSheet(text);
+    }
+  } catch (e) {
+    openPasteSheet('');
+  }
+}
+
+// URL の最後に #steps=8123 が付いていれば取り込む（ショートカットから Safari で開く場合用）
+function importFromUrl() {
+  const match = location.hash.match(/steps=([^&]+)/);
+  if (!match) return;
+  const entries = parseStepsText(decodeURIComponent(match[1]));
+  history.replaceState(null, '', location.pathname + location.search);   // URL から消しておく
+  if (entries.length) importSteps(entries);
+}
+
+
+/* ============================================================
+   集計
+   ============================================================ */
+const totalSteps = () => Object.values(state.days).reduce((sum, steps) => sum + steps, 0);
+const bestDaySteps = () => Math.max(0, ...Object.values(state.days));
+const ownedAnimalCount = () => ANIMALS.filter(a => state.col[a.id]).length;
+const visitedPrefCount = () => Object.keys(state.pref).length;
+
+// きょう（未達成ならきのう）からさかのぼって、目標達成が何日続いているか
+function currentStreak() {
+  let streak = 0;
+  let date = new Date();
+  if ((state.days[dateKey(date)] || 0) < state.goal) date = addDays(date, -1);
+  while ((state.days[dateKey(date)] || 0) >= state.goal) {
+    streak++;
+    date = addDays(date, -1);
+  }
+  return streak;
+}
+
+
+/* ============================================================
+   ガチャ
+   ============================================================ */
+
+// 確率表 RATES にしたがってレアリティを1つ決める
+function rollRarity() {
+  let x = Math.random() * 100;
+  for (const rarity of RARITIES) {
+    x -= RATES[rarity];
+    if (x < 0) return rarity;
+  }
+  return 'N';
+}
+
+function pullGacha(times) {
+  const have = ticketCount();
+  if (have < times) return toast(`🎫 チケットが足りません（あと${times - have}枚）`);
+
+  const results = [];
+  for (let i = 0; i < times; i++) {
+    const rarity = rollRarity();
+    const animal = randomPick(ANIMALS.filter(a => a.rarity === rarity));
+    const owned = state.col[animal.id];
+    state.col[animal.id] = { n: (owned ? owned.n : 0) + 1, first: owned ? owned.first : Date.now() };
+    state.history.unshift({ id: animal.id, t: Date.now() });
+    results.push({ ...animal, isNew: !owned });
+  }
+  state.history = state.history.slice(0, HISTORY_SIZE);
+  state.pulls += times;
+  state.used += times;
+  saveState();
+  renderAll();
+  showCapsule(results);
+}
+
+const OK_BUTTON = '<button class="btn" data-close-overlay>OK</button>';
+const rarityRank = rarity => RARITIES.indexOf(rarity);
+
+// カプセルが揺れる演出。タップするか1.6秒たつと開く
+function showCapsule(results) {
+  const best = results.reduce((top, r) => rarityRank(r.rarity) > rarityRank(top) ? r.rarity : top, 'N');
+  const overlay = $('#overlay');
+  overlay.innerHTML = `
+    <div class="capsule" id="capsule" style="--cap:var(--${best.toLowerCase()})"></div>
+    <div class="tap-note">タップしてあける</div>`;
+  overlay.classList.add('on');
+
+  let opened = false;
+  const open = () => {
+    if (opened) return;
+    opened = true;
+    $('#capsule').classList.add('open');
+    if (rarityRank(best) >= rarityRank('SSR')) flashScreen();
+    setTimeout(() => showGachaResults(results), 420);
+  };
+  overlay.onclick = open;
+  setTimeout(open, 1600);
+}
+function flashScreen() {
+  const flash = $('#flash');
+  flash.classList.remove('go');
+  void flash.offsetWidth;   // アニメーションを最初からやり直すためのおまじない
+  flash.classList.add('go');
+}
+function showGachaResults(results) {
+  const overlay = $('#overlay');
+  overlay.onclick = null;
+  const cards = results.map((r, i) => `
+    <div class="result-card ${r.rarity}" style="animation-delay:${i * 90}ms">
+      ${r.isNew ? '<div class="new-badge">NEW</div>' : ''}
+      <div class="emoji">${r.emoji}</div>
+      <div class="rarity-tag ${r.rarity}">${r.rarity}</div>
+      <div class="name">${r.name}</div>
+    </div>`).join('');
+  overlay.innerHTML = `<div class="results ${results.length === 1 ? 'single' : 'multi'}">${cards}</div>${OK_BUTTON}`;
+}
+
+
+/* ============================================================
+   ご当地（位置情報）
+   ============================================================ */
+function getPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject({ code: 0 });
+    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
+  });
+}
+
+// 国土地理院のサービスで、緯度経度から都道府県コード（1〜47）を調べる。日本の外なら 0。
+// 返ってくる市区町村コード（例: 熊本市中央区 = 43101）の、後ろ3桁を除いた部分が県コード。
+async function lookupPrefCode(lat, lon) {
+  const url = `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('http ' + response.status);
+  const json = await response.json();
+  const cityCode = json && json.results ? String(json.results.muniCd || '') : '';
+  const code = cityCode.length > 3 ? parseInt(cityCode.slice(0, -3), 10) : 0;
+  return code >= 1 && code <= 47 ? code : 0;
+}
+
+// 「今いる県の名物をゲット」
+let checkingLocation = false;
+async function getPrefHere() {
+  if (checkingLocation) return;
+  checkingLocation = true;
+  const buttons = $$('.pref-button');
+  buttons.forEach(b => { b.textContent = '位置を確認中…'; b.disabled = true; });
+  try {
+    let position;
+    try {
+      position = await getPosition();
+    } catch (e) {
+      toast(e && e.code === 1 ? '位置情報が許可されていません（使い方・設定を見てね）' : '位置情報を取得できませんでした');
+      return;
+    }
+    let code;
+    try {
+      code = await lookupPrefCode(position.coords.latitude, position.coords.longitude);
+    } catch (e) {
+      toast('通信できませんでした。電波のよい場所でもう一度ためしてね');
+      return;
+    }
+    if (!code) { toast('日本国内の場所が見つかりませんでした'); return; }
+    receivePref(code);
+  } finally {
+    checkingLocation = false;
+    buttons.forEach(b => { b.textContent = '今いる県の名物をゲット'; b.disabled = false; });
+  }
+}
+
+// その県の名物を受け取る（同じ県は1日1回まで）
+function receivePref(code) {
+  const visit = state.pref[code];
+  if (visit && visit.last === todayKey()) return showPrefResult(code, 'already', 0);
+
+  const gained = visit ? PREF_AGAIN_TICKETS : PREF_FIRST_TICKETS;
+  state.pref[code] = {
+    first: visit ? visit.first : Date.now(),
+    count: (visit ? visit.count : 0) + 1,
+    last: todayKey(),
+  };
+  state.extra += gained;
+  saveState();
+  renderAll();
+  showPrefResult(code, visit ? 'again' : 'new', gained);
+}
+
+// kind: 'new'（はじめて）, 'again'（別の日にまた来た）, 'already'（きょうはもうもらった）
+function showPrefResult(code, kind, gained) {
+  const pref = PREF_BY_CODE[code];
+  let message;
+  if (kind === 'already') message = `きょうはもう${pref.name}でゲットしたにゃ<br><small>また明日きてね</small>`;
+  else if (kind === 'new') message = `${pref.food}をコレクションに追加！<br>🎫+${gained}枚`;
+  else message = `${pref.name}に${state.pref[code].count}日目の訪問！<br>🎫+${gained}枚`;
+
+  const overlay = $('#overlay');
+  overlay.onclick = null;
+  overlay.innerHTML = `
+    <div style="font-size:15px;opacity:.85">今いる場所：${pref.name}</div>
+    <div class="results single" style="margin-top:16px">
+      <div class="result-card visited">
+        ${kind === 'new' ? '<div class="new-badge">NEW</div>' : ''}
+        <div class="emoji">${pref.emoji}</div>
+        <div class="food-of">${pref.name}の名物</div>
+        <div class="name">${pref.food}</div>
+      </div>
+    </div>
+    <p class="result-message">${message}</p>
+    ${OK_BUTTON}`;
+  overlay.classList.add('on');
+}
+
+
+/* ============================================================
+   ホームの街と黒猫
+   ============================================================ */
+
+// 夜空の星を40個ちらす。
+// 同じ数（seed）からは毎回同じ並びの乱数を出す関数（mulberry32）を使うので、星の位置は毎回同じになる。
+function seededRandom(seed) {
+  return () => {
+    seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function buildStars() {
+  const random = seededRandom(20261016);
+  let stars = '';
+  for (let i = 0; i < 40; i++) {
+    const x = (random() * 400).toFixed(1), y = (random() * 200).toFixed(1), r = (0.6 + random() * 1.1).toFixed(1);
+    stars += `<circle class="star" cx="${x}" cy="${y}" r="${r}" fill="#fff" style="animation-delay:${(random() * 3).toFixed(2)}s"/>`;
+  }
+  $('#stars').innerHTML = stars;
+}
+
+// 時刻で空を切り替える（5〜9時 朝、9〜16時 昼、16〜19時 夕方、それ以外は夜）
+const SUN_BY_TIME = {   // 太陽・月の [横の位置, 縦の位置, 色]
+  morning: [70, 130, '#fff6c9'],
+  day:     [310, 60, '#fff4b0'],
+  evening: [320, 165, '#ffc27a'],
+  night:   [310, 70, '#f3f0d2'],
+};
+function setSky() {
+  const hour = new Date().getHours();
+  let time;
+  if (hour >= 5 && hour < 9) time = 'morning';
+  else if (hour >= 9 && hour < 16) time = 'day';
+  else if (hour >= 16 && hour < 19) time = 'evening';
+  else time = 'night';
+
+  $('#sky').dataset.time = time;
+  const [x, y, color] = SUN_BY_TIME[time];
+  const sun = $('#sun');
+  sun.setAttribute('cx', x);
+  sun.setAttribute('cy', y);
+  sun.setAttribute('fill', color);
+}
+
+// 黒猫が4秒しゃべる
+let bubbleTimer;
+function catSay(text) {
+  const bubble = $('#bubble');
+  bubble.textContent = text;
+  bubble.classList.add('on');
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => bubble.classList.remove('on'), 4000);
+}
+
+// 状況に合ったセリフの候補を集めて、その中から1つ選ぶ
+function randomCatLine() {
+  const today = state.days[todayKey()] || 0;
+  const rest = state.goal - today;
+  const tickets = ticketCount();
+  const hour = new Date().getHours();
+  const lines = ['にゃ〜ん', 'きょうもいっしょに歩こうにゃ', 'いい風だにゃ', 'この街、けっこう好きだにゃ'];
+
+  if (hour >= 5 && hour < 10) lines.push('おはようにゃ！');
+  if (hour >= 21 || hour < 4) lines.push('よるのおさんぽ、すきだにゃ', 'きょうもおつかれさまにゃ');
+
+  if (today === 0) lines.push('歩数がまだ取り込まれてないにゃ…', '「歩数を取り込む」を押してにゃ');
+  else if (rest > 0) lines.push(`目標まであと ${formatNumber(rest)} 歩だにゃ`, `${formatNumber(today)}歩、いい調子だにゃ`);
+  else lines.push('目標達成！えらいにゃ！', 'きょうはたくさん歩いたにゃ〜');
+
+  if (tickets >= 10) lines.push(`チケット${tickets}枚！10連ひけるにゃ`);
+  else if (tickets > 0) lines.push(`チケットが${tickets}枚あるにゃ`);
+
+  return randomPick(lines);
+}
+
+
+/* ============================================================
+   画面の表示を最新にする
+   ============================================================ */
+
+// 「◯ / ◯」「◯%」とバーをまとめて更新（例: name が 'animal' なら #animalCount など）
+function setProgress(name, got, all) {
+  $(`#${name}Count`).textContent = `${got} / ${all}`;
+  $(`#${name}Percent`).textContent = Math.floor(percent(got, all)) + '%';
+  $(`#${name}Bar`).style.width = percent(got, all) + '%';
+}
+
+function renderHome() {
+  const today = state.days[todayKey()] || 0;
+  let week = 0;
+  for (let n = 0; n < 7; n++) week += state.days[daysAgoKey(n)] || 0;
+
+  $('#weekSteps').textContent = formatNumber(week);
+  $('#todaySteps').textContent = formatNumber(today);
+  $('#todayBar').style.width = Math.min(100, percent(today, state.goal)) + '%';
+
+  const toNextTicket = STEPS_PER_TICKET - (today % STEPS_PER_TICKET);
+  $('#nextTicketText').innerHTML = today >= state.goal
+    ? `🎉 目標達成！ あと <b>${formatNumber(toNextTicket)}</b> 歩でチケット+1`
+    : `目標 ${formatNumber(state.goal)} 歩まで <b>${formatNumber(state.goal - today)}</b> ／ チケットまで <b>${formatNumber(toNextTicket)}</b>`;
+
+  $('#homeTickets').textContent = `🎫 ${formatNumber(ticketCount())}枚`;
+  $('#homeCollection').textContent = `🐾${ownedAnimalCount()}/${ANIMALS.length}　${visitedPrefCount()}/${PREFS.length}`;
+  $('#lastSyncText').textContent = state.lastSync
+    ? `最後の取り込み：${new Date(state.lastSync).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+    : 'まだ歩数を取り込んでいません';
+  setSky();
+}
+
+function renderGacha() {
+  const tickets = ticketCount();
+  $('#gachaTickets').textContent = formatNumber(tickets);
+  $('#pull1Button').disabled = tickets < 1;
+  $('#pull10Button').disabled = tickets < 10;
+  $('#historyList').innerHTML = state.history.length
+    ? state.history.map(h => ANIMAL_BY_ID[h.id] ? `<span>${ANIMAL_BY_ID[h.id].emoji}</span>` : '').join('')
+    : '<span class="muted">まだ引いていません</span>';
+}
+
+function renderCollection() {
+  // どうぶつ（レアリティの高いものが上）
+  setProgress('animal', ownedAnimalCount(), ANIMALS.length);
+  $('#animalGrid').innerHTML = [...ANIMALS].reverse().map(a => state.col[a.id]
+    ? `<button class="cell ${a.rarity}" data-animal="${a.id}"><div class="emoji">${a.emoji}</div><div class="name">${a.name}</div></button>`
+    : `<button class="cell locked" data-animal="${a.id}"><div class="emoji">${a.emoji}</div><div class="name">？？？</div></button>`
+  ).join('');
+
+  // ご当地（地方ごと）
+  setProgress('pref', visitedPrefCount(), PREFS.length);
+  $('#prefList').innerHTML = REGIONS.map(([regionName, from, to]) => {
+    const prefs = PREFS.slice(from - 1, to);
+    const visited = prefs.filter(p => state.pref[p.code]).length;
+    const cells = prefs.map(p => {
+      const visit = state.pref[p.code];
+      return visit
+        ? `<button class="cell visited" data-pref="${p.code}"><span class="count">${visit.count}日</span><div class="emoji">${p.emoji}</div><div class="name">${p.food}</div><div class="name pref-name">${p.name}</div></button>`
+        : `<button class="cell locked" data-pref="${p.code}"><div class="emoji">${p.emoji}</div><div class="name">？？？</div><div class="name pref-name">${p.name}</div></button>`;
+    }).join('');
+    return `<div class="region">${regionName}　<span>${visited} / ${prefs.length}</span></div><div class="grid">${cells}</div>`;
+  }).join('');
+}
+
+function renderLog() {
+  // 最近7日のグラフ（目標の1.15倍か、いちばん多い日を上端にする）
+  const keys = [];
+  for (let n = 6; n >= 0; n--) keys.push(daysAgoKey(n));
+  const top = Math.max(state.goal * 1.15, ...keys.map(k => state.days[k] || 0));
+  const goalLine = `<div class="goal-line" style="bottom:calc(16px + (100% - 16px) * ${state.goal / top})"></div>`;
+  $('#chart').innerHTML = goalLine + keys.map(key => {
+    const steps = state.days[key] || 0;
+    return `<div class="bar">
+      <div class="bar-area"><div class="bar-fill ${steps >= state.goal ? 'reached' : ''}" style="height:${percent(steps, top)}%"></div></div>
+      <small>${keyToDate(key).getDate()}</small>
+    </div>`;
+  }).join('');
+
+  $('#statTotal').textContent = formatNumber(totalSteps());
+  $('#statBest').textContent = formatNumber(bestDaySteps());
+  $('#statStreak').textContent = currentStreak() + '日';
+  $('#statPulls').textContent = formatNumber(state.pulls) + '回';
+
+  // 日ごとの記録（きょうから14日分）
+  const rows = [];
+  for (let n = 0; n < 14; n++) {
+    const key = daysAgoKey(n);
+    const steps = state.days[key] || 0;
+    rows.push(`<button class="day-row" data-day="${key}">
+      <span>${dateLabel(key)}${n === 0 ? '　<span class="muted">きょう</span>' : ''}</span>
+      <span><b>${steps ? formatNumber(steps) : '—'}</b>${steps >= state.goal ? '<span class="done">達成</span>' : ''}</span>
+    </button>`);
+  }
+  $('#dayList').innerHTML = rows.join('');
+}
+
+function renderAll() {
+  renderHome();
+  renderGacha();
+  renderCollection();
+  renderLog();
+  $('#goalInput').value = state.goal;
+}
+
+// 起動時に1回だけ作ればよいもの
+function renderOnce() {
+  // 排出率の表（UR が上）
+  $('#rateTable').innerHTML = [...RARITIES].reverse().map(rarity => {
+    const kinds = ANIMALS.filter(a => a.rarity === rarity).length;
+    return `<tr><td><span class="rarity-tag ${rarity}">${rarity}</span>　${kinds}種</td><td>${RATES[rarity]}%</td></tr>`;
+  }).join('');
+
+  // ガチャマシンの中の玉
+  const colors = ['#ff6a3d', '#3b82f6', '#a855f7', '#f59e0b', '#16a34a', '#ff3d6e', '#06b6d4'];
+  let balls = '';
+  for (let i = 0; i < 14; i++) {
+    const row = Math.floor(i / 4);
+    const x = 8 + (i % 4) * 36 + (row % 2) * 18, y = 95 - row * 30;
+    balls += `<i class="ball" style="left:${x}px;top:${y}px;background:linear-gradient(${colors[i % colors.length]} 50%,#fff 50%)"></i>`;
+  }
+  $('#globe').innerHTML = balls;
+
+  buildStars();
+}
+
+
+/* ============================================================
+   画面の切り替え・メニュー
+   ============================================================ */
+function showScreen(id) {
+  $$('section').forEach(s => s.classList.toggle('on', s.id === id));
+  $$('.menu [data-go]').forEach(b => b.classList.toggle('current', b.dataset.go === id));
+  document.body.classList.toggle('at-home', id === 'home');
+  closeMenu();
+  window.scrollTo(0, 0);
+}
+const toggleMenu = () => document.body.classList.toggle('menu-open');
+const closeMenu = () => document.body.classList.remove('menu-open');
+
+function switchCollectionTab(tab) {
+  $$('.tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $('#animalsTab').hidden = tab !== 'animals';
+  $('#prefsTab').hidden = tab !== 'prefs';
+}
+
+
+/* ============================================================
+   下から出るシート
+   ============================================================ */
+function openSheet(html) {
+  $('#sheet').innerHTML = html;
+  $('#sheetBackdrop').classList.add('on');
+}
+function closeSheet() {
+  $('#sheetBackdrop').classList.remove('on');
+}
+const CLOSE_BUTTON = '<button class="btn plain" data-close-sheet>とじる</button>';
+
+// 歩数の手入力
+function openStepInputSheet(key = todayKey()) {
+  openSheet(`<h3>✏️ 歩数を入力</h3>
+    <label>日付</label><input type="date" id="inputDate" value="${key}" max="${todayKey()}">
+    <label>歩数</label><input type="number" inputmode="numeric" id="inputSteps" value="${state.days[key] || ''}" placeholder="例: 8500">
+    <p class="muted">入力した値で上書きします。</p>
+    <div class="row"><button class="btn plain" data-close-sheet>やめる</button><button class="btn" id="inputSave">保存</button></div>`);
+
+  // 日付を変えたら、その日の歩数を入れ直す
+  $('#inputDate').onchange = e => { $('#inputSteps').value = state.days[e.target.value] || ''; };
+
+  $('#inputSave').onclick = () => {
+    const date = $('#inputDate').value;
+    const steps = parseInt($('#inputSteps').value, 10);
+    if (!date || isNaN(steps) || steps < 0) return toast('日付と歩数を入れてください');
+    if (date > todayKey()) return toast('未来の日付は入力できません');
+
+    const ticketsBefore = ticketsFromSteps();
+    const gotBonus = recordSteps(date, steps, 'set');
+    const gained = ticketsFromSteps() - ticketsBefore;
+    saveState();
+    closeSheet();
+    toast(`👣 ${dateLabel(date)} ${formatNumber(steps)}歩${gained > 0 ? ` ／ 🎫+${gained}枚` : ''}${gotBonus ? ' 🎉目標達成!' : ''}`);
+    renderAll();
+  };
+}
+
+// クリップボードを自動で読めなかったときの貼り付け欄
+function openPasteSheet(text) {
+  const safeText = text ? String(text).replace(/</g, '&lt;') : '';
+  openSheet(`<h3>📋 歩数を貼り付け</h3>
+    <p class="muted">自動で読み取れなかったので、下の欄に長押しで「ペースト」してください。</p>
+    <textarea id="pasteText" rows="3" placeholder="例: 8123">${safeText}</textarea>
+    <div class="row" style="margin-top:12px"><button class="btn plain" data-close-sheet>やめる</button><button class="btn" id="pasteImport">取り込む</button></div>`);
+  $('#pasteImport').onclick = () => {
+    const entries = parseStepsText($('#pasteText').value);
+    if (!entries.length) return toast('歩数が見つかりません');
+    closeSheet();
+    importSteps(entries);
+  };
+}
+
+// どうぶつの詳細
+function openAnimalSheet(id) {
+  const animal = ANIMAL_BY_ID[id], owned = state.col[id];
+  openSheet(`<div class="sheet-center">
+    <div class="big-emoji ${owned ? '' : 'silhouette'}">${animal.emoji}</div>
+    <div class="rarity-tag ${animal.rarity}" style="font-size:14px">${animal.rarity}</div>
+    <h3>${owned ? animal.name : '？？？'}</h3>
+    <p class="muted">${owned ? `はじめて出会った日：${new Date(owned.first).toLocaleDateString('ja-JP')}` : 'まだ出会っていないキャラ'}</p>
+    ${CLOSE_BUTTON}</div>`);
+}
+
+// 都道府県の詳細
+function openPrefSheet(code) {
+  const pref = PREF_BY_CODE[code], visit = state.pref[code];
+  openSheet(visit
+    ? `<div class="sheet-center">
+        <div class="big-emoji">${pref.emoji}</div>
+        <div class="muted" style="font-weight:700">${pref.name}の名物</div>
+        <h3 style="margin:4px 0 6px">${pref.food}</h3>
+        <p class="muted">訪れた日数：${visit.count}日<br>はじめて訪れた日：${new Date(visit.first).toLocaleDateString('ja-JP')}<br>最後に訪れた日：${dateLabel(visit.last)}</p>
+        ${CLOSE_BUTTON}</div>`
+    : `<div class="sheet-center">
+        <div class="big-emoji silhouette">${pref.emoji}</div>
+        <h3>${pref.name}の名物：？？？</h3>
+        <p class="muted">${pref.name}に行って「名物をゲット」を押すと手に入ります</p>
+        ${CLOSE_BUTTON}</div>`);
+}
+
+
+/* ============================================================
+   ボタンを押したときの処理
+   ============================================================ */
+
+// 画面の中で作り直されるボタンは、ここでまとめて受け取る（data-◯◯ 属性で見分ける）
+document.addEventListener('click', e => {
+  const target = selector => e.target.closest(selector);
+  if (target('[data-close-sheet]')) return closeSheet();
+  if (target('[data-close-overlay]')) return $('#overlay').classList.remove('on');
+
+  const go = target('[data-go]');            if (go) return showScreen(go.dataset.go);
+  const animal = target('[data-animal]');    if (animal) return openAnimalSheet(animal.dataset.animal);
+  const pref = target('[data-pref]');        if (pref) return openPrefSheet(Number(pref.dataset.pref));
+  const day = target('[data-day]');          if (day) return openStepInputSheet(day.dataset.day);
+  const tab = target('[data-tab]');          if (tab) return switchCollectionTab(tab.dataset.tab);
+});
+
+// シートの外側（暗いところ）を押したら閉じる
+$('#sheetBackdrop').addEventListener('click', e => { if (e.target.id === 'sheetBackdrop') closeSheet(); });
+
+$('#menuButton').onclick = toggleMenu;
+$('#menuBackdrop').onclick = closeMenu;
+$('#menuStepInput').onclick = () => { closeMenu(); openStepInputSheet(); };
+$('#catTapArea').onclick = () => catSay(randomCatLine());
+$('#importButton').onclick = importFromClipboard;
+$$('.pref-button').forEach(b => b.onclick = getPrefHere);
+$('#pull1Button').onclick = () => pullGacha(1);
+$('#pull10Button').onclick = () => pullGacha(10);
+
+$('#goalSaveButton').onclick = () => {
+  const goal = parseInt($('#goalInput').value, 10);
+  if (!(goal >= 1000 && goal <= 100000)) return toast('1,000〜100,000歩で入れてください');
+  state.goal = goal;
+  saveState();
+  renderAll();
+  toast(`目標を ${formatNumber(goal)} 歩にしました`);
+};
+
+window.addEventListener('hashchange', importFromUrl);
+// アプリに戻ってきたら表示を最新に（日付が変わっていてもきょうの表示が正しくなる）
+document.addEventListener('visibilitychange', () => { if (!document.hidden) renderAll(); });
+
+
+/* ============================================================
+   起動
+   ============================================================ */
+renderOnce();
+renderAll();
+importFromUrl();
+setTimeout(() => catSay(randomCatLine()), 900);
+// データをブラウザに消されにくくするようお願いする
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+// オフラインでも開けるようにする（sw.js が同じフォルダにある場合）
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
